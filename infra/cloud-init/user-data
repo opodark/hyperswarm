@@ -1,11 +1,40 @@
 #cloud-config
 
+hostname: hyperswarm-node
+
 package_update: true
+package_upgrade: true
 
 packages:
   - curl
   - git
   - python3
+  - python3-pip
+  - docker.io
 
 runcmd:
+
+  # install ollama
   - curl -fsSL https://ollama.com/install.sh | sh
+
+  # start ollama
+  - systemctl enable ollama
+  - systemctl start ollama
+
+  # wait ollama
+  - sleep 10
+
+  # pull model
+  - ollama pull phi3:mini
+
+  # create swarm dir
+  - mkdir -p /opt/hyperswarm
+
+  # clone repo
+  - git clone https://github.com/opodark/hyperswarm.git /opt/hyperswarm
+
+  # install python deps
+  - pip3 install fastapi uvicorn requests
+
+  # bootstrap node
+  - python3 /opt/hyperswarm/bootstrap/client/bootstrap.py
