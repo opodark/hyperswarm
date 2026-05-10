@@ -1,28 +1,10 @@
 from fastapi import FastAPI
 from datetime import datetime
-from fastapi import FastAPI
 
-app = FastAPI()
-
-REGISTRY = {"nodes": {}}
-
-
-@app.get("/registry")
-def get_registry():
-
-    return REGISTRY
-
-
-@app.post("/registry/update")
-def update_registry(data: dict):
-
-    REGISTRY.update(data)
-
-    return {"ok": True}
 app = FastAPI(title="HyperSwarm Control Plane")
 
 # ─────────────────────────────
-# STATE
+# STATE MINIMO MA STABILE
 # ─────────────────────────────
 
 NODES = {}
@@ -40,8 +22,7 @@ def root():
     return {
         "system": "hyperswarm",
         "nodes": len(NODES),
-        "tasks": len(TASKS),
-        "events": len(EVENTS)
+        "tasks": len(TASKS)
     }
 
 
@@ -56,13 +37,17 @@ def register_node(node: dict):
 
     NODES[node_id] = {
         "id": node_id,
+        "hostname": node.get("hostname"),
+        "model": node.get("model", "unknown"),
+        "role": node.get("role", "auto"),
         "status": "online",
         "last_seen": datetime.utcnow()
     }
 
     EVENTS.append({
         "type": "node_registered",
-        "node_id": node_id
+        "node_id": node_id,
+        "ts": datetime.utcnow().isoformat()
     })
 
     return NODES[node_id]
@@ -74,6 +59,7 @@ def heartbeat(data: dict):
     node_id = data["node_id"]
 
     if node_id in NODES:
+
         NODES[node_id]["last_seen"] = datetime.utcnow()
         NODES[node_id]["status"] = "online"
 
@@ -99,12 +85,14 @@ def create_task(task: dict):
         "id": task_id,
         "title": task["title"],
         "status": "open",
-        "assigned_to": None
+        "assigned_to": None,
+        "result": None
     }
 
     EVENTS.append({
         "type": "task_created",
-        "task_id": task_id
+        "task_id": task_id,
+        "ts": datetime.utcnow().isoformat()
     })
 
     return TASKS[task_id]
@@ -117,22 +105,17 @@ def get_tasks():
 
 
 # ─────────────────────────────
-# 🧠 SWARM BRAIN (DECISION ENGINE)
+# SIMPLE DISPATCH (BARE METAL VERSION)
 # ─────────────────────────────
 
 @app.post("/swarm/dispatch")
 def dispatch():
-
-    """
-    ASSEGNA TASK AI A NODI DISPONIBILI
-    """
 
     for task_id, task in TASKS.items():
 
         if task["status"] != "open":
             continue
 
-        # trova primo nodo libero
         for node_id, node in NODES.items():
 
             if node["status"] == "online":
@@ -143,33 +126,18 @@ def dispatch():
                 EVENTS.append({
                     "type": "task_assigned",
                     "task_id": task_id,
-                    "node_id": node_id
+                    "node_id": node_id,
+                    "ts": datetime.utcnow().isoformat()
                 })
 
                 break
 
-    return {"status": "dispatch complete"}
+    return {"status": "ok"}
 
 
 # ─────────────────────────────
-# EVENTS (SCIMMIA MEMORIA)
+# RESULT
 # ─────────────────────────────
-
-@app.post("/events")
-def add_event(event: dict):
-
-    EVENTS.append({
-        "timestamp": datetime.utcnow().isoformat(),
-        **event
-    })
-
-    return {"ok": True}
-
-
-@app.get("/events")
-def get_events():
-
-    return EVENTS
 
 @app.post("/tasks/{task_id}/result")
 def task_result(task_id: str, payload: dict):
@@ -182,8 +150,7 @@ def task_result(task_id: str, payload: dict):
         EVENTS.append({
             "type": "task_completed",
             "task_id": task_id,
-            "result": payload["result"]
+            "ts": datetime.utcnow().isoformat()
         })
 
     return {"ok": True}
-

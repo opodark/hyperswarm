@@ -3,6 +3,8 @@ import socket
 import requests
 import time
 import os
+from control_plane.core.state import init_state, is_provisioned, mark_provisioned
+
 
 from control_plane.core.state import (
     init_state,
