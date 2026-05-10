@@ -152,3 +152,20 @@ def add_event(event: dict):
 def get_events():
 
     return EVENTS
+
+@app.post("/tasks/{task_id}/result")
+def task_result(task_id: str, payload: dict):
+
+    if task_id in TASKS:
+
+        TASKS[task_id]["result"] = payload["result"]
+        TASKS[task_id]["status"] = "done"
+
+        EVENTS.append({
+            "type": "task_completed",
+            "task_id": task_id,
+            "result": payload["result"]
+        })
+
+    return {"ok": True}
+
