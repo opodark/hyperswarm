@@ -1,0 +1,6 @@
+orchestrator
+memory
+observability
+bootstrap
+PXE
+swarm nodes
