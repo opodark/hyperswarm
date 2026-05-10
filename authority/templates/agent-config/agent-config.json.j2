@@ -1,0 +1,12 @@
+{
+  "config_version": 1,
+  "node_id": "{{ node_id }}",
+  "hostname": "{{ hostname }}",
+  "role": "{{ role }}",
+  "model": "{{ model }}",
+  "authority_url": "{{ authority_url }}",
+  "join_token": "{{ join_token }}",
+  "memory_policy": "{{ memory_policy | default('shared') }}",
+  "tags": {{ tags | default([]) | tojson }},
+  "capabilities": {{ capabilities | tojson }}
+}

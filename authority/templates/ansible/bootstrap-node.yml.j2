@@ -1,0 +1,59 @@
+- name: Bootstrap HyperSwarm node
+  hosts: {{ inventory_group | default("swarm_nodes") }}
+  become: yes
+
+  vars:
+    authority_url: "{{ authority_url }}"
+    join_token: "{{ join_token }}"
+
+  tasks:
+
+    - name: Wait for SSH
+      wait_for_connection:
+        timeout: 300
+
+    - name: Ensure swarm directory exists
+      file:
+        path: /opt/hyperswarm
+        state: directory
+
+    - name: Clone HyperSwarm repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: /opt/hyperswarm
+
+    - name: Install Python dependencies
+      pip:
+        name:
+          - fastapi
+          - uvicorn
+          - requests
+          - pydantic
+          - jinja2
+
+    - name: Install Ollama
+      shell: curl -fsSL https://ollama.com/install.sh | sh
+
+    - name: Start Ollama
+      systemd:
+        name: ollama
+        enabled: yes
+        state: started
+
+    - name: Pull model
+      shell: ollama pull {{ model }}
+
+    - name: Write authority config
+      copy:
+        dest: /opt/hyperswarm/agent-config.json
+        content: |
+          {
+            "config_version": 1,
+            "authority_url": "{{ authority_url }}",
+            "join_token": "{{ join_token }}",
+            "role": "{{ role }}",
+            "model": "{{ model }}"
+          }
+
+    - name: Run bootstrap client
+      shell: python3 /opt/hyperswarm/bootstrap/client/bootstrap.py

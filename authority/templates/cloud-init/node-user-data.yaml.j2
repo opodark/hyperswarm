@@ -1,0 +1,72 @@
+#cloud-config
+
+hostname: {{ hostname }}
+
+users:
+  - name: {{ ssh_user | default("swarm") }}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - git
+  - python3
+  - python3-pip
+  - docker.io
+  - jq
+
+write_files:
+  - path: /opt/hyperswarm/agent-config.json
+    permissions: "0644"
+    content: |
+      {
+        "config_version": 1,
+        "node_id": "{{ node_id }}",
+        "role": "{{ role }}",
+        "model": "{{ model }}",
+        "authority_url": "{{ authority_url }}",
+        "join_token": "{{ join_token }}",
+        "memory_policy": "{{ memory_policy | default('shared') }}",
+        "tags": {{ tags | default([]) | tojson }}
+      }
+
+runcmd:
+
+  # ─────────────────────────────
+  # SYSTEM SERVICES
+  # ─────────────────────────────
+
+  - systemctl enable docker
+  - systemctl start docker
+
+  # ─────────────────────────────
+  # OLLAMA INSTALL
+  # ─────────────────────────────
+
+  - curl -fsSL https://ollama.com/install.sh | sh
+
+  - systemctl enable ollama
+  - systemctl start ollama
+
+  - sleep 5
+
+  - ollama pull {{ model }}
+
+  # ─────────────────────────────
+  # HYPERSWARM INSTALL
+  # ─────────────────────────────
+
+  - mkdir -p /opt/hyperswarm
+
+  - git clone {{ repo_url }} /opt/hyperswarm || true
+
+  - pip3 install fastapi uvicorn requests pydantic jinja2
+
+  # ─────────────────────────────
+  # BOOTSTRAP NODE
+  # ─────────────────────────────
+
+  - python3 /opt/hyperswarm/bootstrap/client/bootstrap.py

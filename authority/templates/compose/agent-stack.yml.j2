@@ -1,0 +1,46 @@
+services:
+
+  agent:
+
+    image: {{ agent_image | default("python:3.11-slim") }}
+
+    container_name: hyperswarm-agent
+
+    working_dir: /app
+
+    command: >
+      sh -c "
+      pip install fastapi uvicorn requests pydantic jinja2 &&
+      python /app/agent/runtime.py
+      "
+
+    environment:
+      AUTHORITY_URL: "{{ authority_url }}"
+      JOIN_TOKEN: "{{ join_token }}"
+      NODE_ROLE: "{{ role }}"
+      MODEL_NAME: "{{ model }}"
+
+    volumes:
+      - {{ repo_mount | default("./:/app") }}
+
+    restart: unless-stopped
+
+    depends_on:
+      - ollama
+
+  ollama:
+
+    image: ollama/ollama
+
+    container_name: hyperswarm-ollama
+
+    ports:
+      - "11434:11434"
+
+    volumes:
+      - ollama_data:/root/.ollama
+
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
